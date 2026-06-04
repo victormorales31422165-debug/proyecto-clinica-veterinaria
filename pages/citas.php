@@ -1,85 +1,165 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
+
+// 1. IMPORTAR CLASES Y DEPENDENCIAS
 require_once '../vendor/autoload.php';
+require_once '../clases/DB.php';
+require_once '../clases/Cita.php';
+require_once '../clases/Mascota.php';
+require_once '../clases/Usuario.php';
 require_once '../includes/TokenAntiCSRF.php';
+
 use PHPMailer\PHPMailer\PHPMailer;
 
+// Seguridad de Rol
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
     header("Location: ../login.php"); exit();
 }
+
+// 2. INICIALIZAR OBJETOS
+$database = new DB();
+$db = $database->conectar();
+$citaObj = new Cita($db);
+$mascotaObj = new Mascota($db);
+$usuarioObj = new Usuario($db);
+
 require_once '../includes/header.php';
 
-// --- LOGICA DE CORREO ---
-function enviarAviso($con, $id_v, $fh, $m_nom) {
-    $res = mysqli_query($con, "SELECT nombre, correo FROM usuario WHERE id_veterinario = $id_v");
-    $v = mysqli_fetch_assoc($res);
+// Función de envío de correos profesional
+function enviarAviso($usuarioObj, $mascotaObj, $id_v, $fh, $id_m) {
+    $v = $usuarioObj->obtenerPerfil($id_v);
+    $m = $mascotaObj->obtenerPorId($id_m);
+    
     if ($v && !empty($v['correo'])) {
         $mail = new PHPMailer(true);
         try {
-            $mail->CharSet = 'UTF-8'; $mail->isSMTP();
-            $mail->Host = 'smtp.gmail.com'; $mail->SMTPAuth = true;
-            $mail->Username = 'clinicaveterinariaelcolibri1@gmail.com'; $mail->Password = 'zyfn atzg ygau jmrs';
-            $mail->SMTPSecure = 'tls'; $mail->Port = 587;
-            $mail->setFrom('clinica@elcolibri.com', 'El Colibrí');
-            $mail->addAddress($v['correo']);
-            $mail->isHTML(true);
-            $mail->Subject = 'Nueva Cita Asignada';
-            $mail->Body = "Cita para $m_nom programada el $fh";
+            // Configuración del servidor
+            $mail->CharSet = 'UTF-8';
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com';
+            $mail->SMTPAuth = true;
+            $mail->Username = 'clinicaveterinariaelcolibri1@gmail.com'; 
+            $mail->Password = 'zyfn atzg ygau jmrs';
+            $mail->SMTPSecure = 'tls';
+            $mail->Port = 587;
+
+            // Destinatarios
+            $mail->setFrom('clinica@elcolibri.com', 'Clínica Veterinaria El Colibrí');
+            $mail->addAddress($v['correo'], $v['nombre']);
+
+            // Contenido del Correo
+            $mail->isHTML(true);                                  
+            $mail->Subject = '📋 Nueva Cita Asignada - ' . htmlspecialchars($m['nombre']);
+
+            // Formateamos la fecha y hora para que sea legible
+            $fechaFormateada = date('d/m/Y', strtotime($fh));
+            $horaFormateada = date('h:i A', strtotime($fh));
+
+            // DISEÑO DE LA PLANTILLA HTML PROFESIONAL
+            $cuerpo = "
+            <html>
+            <body style='font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; margin: 0;'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);'>
+                    
+                    <!-- Encabezado con color corporativo -->
+                    <div style='background-color: #198754; padding: 25px; text-align: center;'>
+                        <h1 style='color: #ffffff; margin: 0; font-size: 28px; letter-spacing: 1px;'>El <span style='color: #FF7F50;'>Colibrí</span></h1>
+                        <p style='color: #e0e0e0; margin: 5px 0 0 0; font-size: 14px; text-transform: uppercase;'>Clínica Veterinaria</p>
+                    </div>
+
+                    <!-- Cuerpo del mensaje -->
+                    <div style='padding: 35px; color: #333333;'>
+                        <h2 style='color: #198754; margin-top: 0;'>Hola, Dr. " . htmlspecialchars($v['nombre']) . "</h2>
+                        <p style='font-size: 16px; line-height: 1.6; color: #555555;'>
+                            Le informamos que se ha programado una nueva cita médica y usted ha sido asignado como el médico responsable.
+                        </p>
+                        
+                        <div style='background-color: #fcfcfc; border: 1px solid #eeeeee; border-left: 5px solid #FF7F50; padding: 20px; margin: 25px 0; border-radius: 4px;'>
+                            <h3 style='margin-top: 0; font-size: 16px; color: #198754;'>Detalles del Paciente:</h3>
+                            <p style='margin: 8px 0; font-size: 15px;'><strong>🐾 Mascota:</strong> " . htmlspecialchars($m['nombre']) . "</p>
+                            <p style='margin: 8px 0; font-size: 15px;'><strong>📅 Fecha:</strong> " . $fechaFormateada . "</p>
+                            <p style='margin: 8px 0; font-size: 15px;'><strong>⏰ Hora:</strong> " . $horaFormateada . "</p>
+                            <p style='margin: 8px 0; font-size: 15px;'><strong>🩺 Especie/Raza:</strong> " . htmlspecialchars($m['especie']) . " - " . htmlspecialchars($m['raza']) . "</p>
+                        </div>
+
+                        <p style='font-size: 15px; color: #555555;'>Recuerde revisar el historial clínico en el panel administrativo antes de la atención.</p>
+                        
+                        <div style='text-align: center; margin-top: 35px;'>
+                            <a href='http://localhost/clinica-colibri/' style='background-color: #FF7F50; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.1);'>Acceder al Sistema</a>
+                        </div>
+                    </div>
+
+                    <!-- Pie de página -->
+                    <div style='background-color: #f8f9fa; padding: 20px; text-align: center; color: #999999; font-size: 12px; border-top: 1px solid #eeeeee;'>
+                        <p style='margin: 0;'>Este es un mensaje automático generado por el Sistema Colibrí.</p>
+                        <p style='margin: 5px 0 0 0;'>&copy; " . date('Y') . " Clínica Veterinaria El Colibrí</p>
+                    </div>
+                </div>
+            </body>
+            </html>";
+
+            $mail->Body = $cuerpo;
+            // Versión en texto plano para clientes que no soportan HTML
+            $mail->AltBody = "Nueva cita para " . $m['nombre'] . " el " . $fechaFormateada . " a las " . $horaFormateada;
+
             $mail->send();
-        } catch (Exception $e) {}
+        } catch (Exception $e) {
+            // Error silencioso
+        }
     }
 }
 
-// --- PROCESAR FORMULARIO ---
+// 3. PROCESAR ACCIONES (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) { die("CSRF Error"); }
 
-    $fh = $_POST['fecha_hora']; // Formato: YYYY-MM-DDTHH:MM
-    $mot = mysqli_real_escape_string($con, $_POST['motivo']);
-    $id_m = (int)$_POST['id_mascota'];
-    $id_v = !empty($_POST['id_veterinario']) ? (int)$_POST['id_veterinario'] : "NULL";
-
     if (isset($_POST['crear_cita'])) {
-        mysqli_query($con, "INSERT INTO cita (fecha_hora, motivo, id_mascota, id_veterinario, estado) VALUES ('$fh', '$mot', $id_m, $id_v, 'pendiente')");
-        if($id_v !== "NULL") {
-            $m_res = mysqli_query($con, "SELECT nombre FROM mascota WHERE id_mascota = $id_m");
-            $m_data = mysqli_fetch_assoc($m_res);
-            enviarAviso($con, $id_v, $fh, $m_data['nombre']);
+        if($citaObj->crearCitaCompleta($_POST)) {
+            if(!empty($_POST['id_veterinario'])) {
+                enviarAviso($usuarioObj, $mascotaObj, $_POST['id_veterinario'], $_POST['fecha_hora'], $_POST['id_mascota']);
+            }
         }
     }
+    
     if (isset($_POST['actualizar_cita'])) {
-        $id_c = (int)$_POST['id_cita'];
-        $est = $_POST['estado'];
-        mysqli_query($con, "UPDATE cita SET fecha_hora='$fh', motivo='$mot', id_veterinario=$id_v, estado='$est' WHERE id_cita=$id_c");
+        $citaObj->actualizarCitaCompleta($_POST);
     }
+    
     header("Location: citas.php"); exit();
 }
 
+// 4. PROCESAR ACCIONES (GET)
 if (isset($_GET['eliminar'])) {
-    $id = (int)$_GET['eliminar'];
-    mysqli_query($con, "DELETE FROM cita WHERE id_cita = $id");
+    $citaObj->eliminar((int)$_GET['eliminar']);
+    header("Location: citas.php"); exit();
 }
 
 $editRow = null;
 if (isset($_GET['editar'])) {
-    $id = (int)$_GET['editar'];
-    $editRow = mysqli_fetch_assoc(mysqli_query($con, "SELECT * FROM cita WHERE id_cita=$id"));
+    $editRow = $citaObj->obtenerPorId((int)$_GET['editar']);
 }
 
-$mascotas = mysqli_query($con, "SELECT id_mascota, nombre FROM mascota ORDER BY nombre ASC");
-$veterinarios = mysqli_query($con, "SELECT id_veterinario, nombre FROM usuario WHERE rol='veterinario' ORDER BY nombre ASC");
-$citas = mysqli_query($con, "SELECT c.*, m.nombre as m_nom, u.nombre as v_nom FROM cita c JOIN mascota m ON c.id_mascota=m.id_mascota LEFT JOIN usuario u ON c.id_veterinario=u.id_veterinario ORDER BY c.fecha_hora DESC");
+// 5. OBTENER LISTADOS PARA LA VISTA
+$mascotas = $mascotaObj->leerTodas();
+$veterinarios = $usuarioObj->listarVeterinarios();
+$citas = $citaObj->leerTodas();
 ?>
 
 <div class="container-fluid mt-3">
     <h2 class="mb-4">Gestión de Citas</h2>
 
+    <!-- Formulario (Diseño intacto) -->
     <div class="card mb-4 shadow-sm border-0">
-        <div class="card-header bg-primary text-white fw-bold"><?= $editRow ? 'Editar Cita' : 'Programar Nueva Cita' ?></div>
+        <div class="card-header bg-primary text-white fw-bold">
+            <?= $editRow ? 'Editar Cita' : 'Programar Nueva Cita' ?>
+        </div>
         <div class="card-body">
             <form method="POST">
                 <input type="hidden" name="token_csrf" value="<?= TokenAntiCSRF::generarToken() ?>">
-                <?php if($editRow): ?><input type="hidden" name="id_cita" value="<?= $editRow['id_cita'] ?>"><?php endif; ?>
+                <?php if($editRow): ?>
+                    <input type="hidden" name="id_cita" value="<?= $editRow['id_cita'] ?>">
+                <?php endif; ?>
+                
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Fecha y Hora *</label>
@@ -87,9 +167,12 @@ $citas = mysqli_query($con, "SELECT c.*, m.nombre as m_nom, u.nombre as v_nom FR
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Mascota *</label>
-                        <select name="id_mascota" class="form-select">
-                            <?php while($m = mysqli_fetch_assoc($mascotas)): ?>
-                                <option value="<?= $m['id_mascota'] ?>" <?= (($editRow['id_mascota'] ?? '') == $m['id_mascota'] ? 'selected' : '') ?>><?= htmlspecialchars($m['nombre']) ?></option>
+                        <select name="id_mascota" class="form-select" required>
+                            <option value="">Seleccionar...</option>
+                            <?php while($m = $mascotas->fetch(PDO::FETCH_ASSOC)): ?>
+                                <option value="<?= $m['id_mascota'] ?>" <?= (($editRow['id_mascota'] ?? '') == $m['id_mascota'] ? 'selected' : '') ?>>
+                                    <?= htmlspecialchars($m['nombre']) ?>
+                                </option>
                             <?php endwhile; ?>
                         </select>
                     </div>
@@ -97,8 +180,10 @@ $citas = mysqli_query($con, "SELECT c.*, m.nombre as m_nom, u.nombre as v_nom FR
                         <label class="form-label fw-bold">Veterinario</label>
                         <select name="id_veterinario" class="form-select">
                             <option value="">Sin asignar</option>
-                            <?php mysqli_data_seek($veterinarios, 0); while($v = mysqli_fetch_assoc($veterinarios)): ?>
-                                <option value="<?= $v['id_veterinario'] ?>" <?= (($editRow['id_veterinario'] ?? '') == $v['id_veterinario'] ? 'selected' : '') ?>><?= htmlspecialchars($v['nombre']) ?></option>
+                            <?php while($v = $veterinarios->fetch(PDO::FETCH_ASSOC)): ?>
+                                <option value="<?= $v['id_veterinario'] ?>" <?= (($editRow['id_veterinario'] ?? '') == $v['id_veterinario'] ? 'selected' : '') ?>>
+                                    <?= htmlspecialchars($v['nombre']) ?>
+                                </option>
                             <?php endwhile; ?>
                         </select>
                     </div>
@@ -121,25 +206,45 @@ $citas = mysqli_query($con, "SELECT c.*, m.nombre as m_nom, u.nombre as v_nom FR
         </div>
     </div>
 
+    <!-- Tabla (Diseño intacto) -->
     <div class="card shadow-sm border-0">
         <div class="card-body p-0">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-success text-dark">
-                    <tr><th class="ps-3">Fecha / Hora</th><th>Mascota</th><th>Veterinario</th><th>Estado</th><th class="text-center">Acciones</th></tr>
+                    <tr>
+                        <th class="ps-3">Fecha / Hora</th>
+                        <th>Mascota</th>
+                        <th>Veterinario</th>
+                        <th>Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
                 </thead>
                 <tbody>
-                    <?php while($c = mysqli_fetch_assoc($citas)): ?>
+                    <?php while($c = $citas->fetch(PDO::FETCH_ASSOC)): ?>
                     <tr>
                         <td class="ps-3">
                             <?= date('d/m/Y', strtotime($c['fecha_hora'])) ?> 
                             <small class="text-muted">(<?= date('H:i', strtotime($c['fecha_hora'])) ?>)</small>
                         </td>
-                        <td class="fw-bold"><?= htmlspecialchars($c['m_nom']) ?></td>
+                        <td class="fw-bold"><?= htmlspecialchars($c['nombre_mascota'] ?? $c['m_nom'] ?? 'N/A') ?></td>
                         <td><?= htmlspecialchars($c['v_nom'] ?? 'Sin asignar') ?></td>
                         <td><span class="badge bg-warning text-dark"><?= $c['estado'] ?></span></td>
                         <td class="text-center">
-                            <a href="?editar=<?= $c['id_cita'] ?>" class="btn btn-sm btn-outline-warning">Editar</a>
-                            <a href="?eliminar=<?= $c['id_cita'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Borrar?')">Borrar</a>
+                            <!-- BOTÓN DE OJO -->
+                            <button class="btn btn-sm btn-outline-info" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#modalMotivo" 
+                                    data-mascota="<?= htmlspecialchars($c['nombre_mascota'] ?? $c['m_nom'] ?? 'N/A') ?>" 
+                                    data-motivo="<?= htmlspecialchars($c['motivo'] ?? 'Sin motivo registrado') ?>">
+                                <i class="fas fa-eye"></i>
+                            </button>
+
+                            <a href="?editar=<?= $c['id_cita'] ?>" class="btn btn-sm btn-outline-warning">
+                                <i class="fas fa-pen"></i>
+                            </a>
+                            <a href="?eliminar=<?= $c['id_cita'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Borrar?')">
+                                <i class="fas fa-trash"></i>
+                            </a>
                         </td>
                     </tr>
                     <?php endwhile; ?>
@@ -149,4 +254,4 @@ $citas = mysqli_query($con, "SELECT c.*, m.nombre as m_nom, u.nombre as v_nom FR
     </div>
 </div>
 
-<?php require '../includes/footer.php'; ?>
+<?php require_once '../includes/footer.php'; ?>

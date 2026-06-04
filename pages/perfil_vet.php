@@ -1,46 +1,56 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-require_once '../config/db.php';
-// 1. Importar la clase de seguridad
+
+// 1. IMPORTAR CLASES Y LIBRERÍAS
+require_once '../clases/DB.php';
+require_once '../clases/Usuario.php';
 require_once '../includes/TokenAntiCSRF.php';
 
-// Seguridad: Solo veterinarios
+// 2. SEGURIDAD Y OBJETOS
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'veterinario') {
     header("Location: ../login.php"); exit();
 }
 
+$database = new DB();
+$db = $database->conectar();
+$usuarioObj = new Usuario($db);
+
 $id_vet = $_SESSION['user']['id_veterinario'];
 $mensaje = '';
 
-// LÓGICA PARA ACTUALIZAR DATOS Y CONTRASEÑA
+// 3. PROCESAR ACTUALIZACIÓN (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    
-    // 2. VALIDACIÓN DEL TOKEN CSRF
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
         die("Error de seguridad: Token CSRF no válido o sesión expirada.");
     }
 
-    $nombre = mysqli_real_escape_string($con, $_POST['nombre']);
-    $correo = mysqli_real_escape_string($con, $_POST['correo']);
-    $especialidad = mysqli_real_escape_string($con, $_POST['especialidad']);
-    $pass_nueva = trim($_POST['password']);
+    // Recopilamos los datos del POST
+    $datos_actualizar = [
+        'nombre' => trim($_POST['nombre']),
+        'correo' => trim($_POST['correo']),
+        'especialidad' => trim($_POST['especialidad']),
+        'password' => trim($_POST['password']), // Puede estar vacío
+    ];
 
-    // Si el médico escribe una contraseña, la actualizamos. Si no, se queda la anterior.
-    $sql_pass = !empty($pass_nueva) ? ", password = '$pass_nueva'" : "";
-
-    $query = "UPDATE usuario SET nombre='$nombre', correo='$correo', especialidad='$especialidad' $sql_pass 
-              WHERE id_veterinario = $id_vet";
-
-    if (mysqli_query($con, $query)) {
+    // Llamamos al método de la clase para actualizar
+    if ($usuarioObj->actualizarPerfil($id_vet, $datos_actualizar)) {
         $mensaje = "✅ Datos actualizados correctamente.";
-        // Actualizamos la sesión para que el nombre cambie arriba en el nav de inmediato
-        $_SESSION['user']['nombre'] = $nombre;
+        
+        // Actualizamos la sesión si se cambió el nombre
+        $_SESSION['user']['nombre'] = $datos_actualizar['nombre'];
+    } else {
+        $mensaje = "Ocurrió un error al actualizar los datos.";
     }
 }
 
-// Consultar datos actuales del médico
-$res = mysqli_query($con, "SELECT * FROM usuario WHERE id_veterinario = $id_vet");
-$datos = mysqli_fetch_assoc($res);
+// 4. OBTENER DATOS ACTUALES DEL VETERINARIO
+// Usamos el método de la clase para obtener los datos
+$datos_vet = $usuarioObj->obtenerPerfil($id_vet); 
+// Esto es crucial para que el value de los inputs no se pierda.
+// Si tu sesión ya tiene todos los datos necesarios, puedes seguir usando $_SESSION['user']
+// para la mayoría de los campos y solo obtener los que cambian o no están en sesión.
+// Para este caso, vamos a usar el resultado de la consulta para asegurar que sea el más actual:
+$datos_actuales = $datos_vet ?? $_SESSION['user']; // Usamos lo obtenido o lo de sesión si falla la consulta
 
 require_once '../includes/header.php';
 ?>
@@ -56,20 +66,19 @@ require_once '../includes/header.php';
                     <?php if($mensaje) echo "<div class='alert alert-success'>$mensaje</div>"; ?>
 
                     <form method="POST">
-                        <!-- 3. CAMPO OCULTO PARA EL TOKEN CSRF -->
                         <input type="hidden" name="token_csrf" value="<?= TokenAntiCSRF::generarToken() ?>">
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Nombre Completo</label>
-                            <input type="text" name="nombre" class="form-control" value="<?= htmlspecialchars($datos['nombre']) ?>" required>
+                            <input type="text" name="nombre" class="form-control" value="<?= htmlspecialchars($datos_actuales['nombre']) ?>" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Especialidad</label>
-                            <input type="text" name="especialidad" class="form-control" value="<?= htmlspecialchars($datos['especialidad']) ?>" required>
+                            <input type="text" name="especialidad" class="form-control" value="<?= htmlspecialchars($datos_actuales['especialidad']) ?>" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Mi Correo</label>
-                            <input type="email" name="correo" class="form-control" value="<?= htmlspecialchars($datos['correo']) ?>" required>
+                            <input type="email" name="correo" class="form-control" value="<?= htmlspecialchars($datos_actuales['correo']) ?>" required>
                         </div>
                         <hr>
                         <div class="mb-3 bg-light p-3 rounded">

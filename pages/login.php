@@ -1,64 +1,73 @@
 <?php
-// 1. Iniciamos sesión de forma segura
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-require 'config/db.php';
+
+// 1. IMPORTAMOS LAS CLASES
+require_once '../clases/DB.php';
+require_once '../clases/Usuario.php';
+require_once '../includes/TokenAntiCSRF.php';
 
 $error = '';
 
+// 2. PROCESAR LOGIN
 if ($_POST) {
-    $username = trim($_POST['username']);
-    $password = trim($_POST['password']);
+    // Validar Token CSRF por seguridad
+    if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
+        die("Error de seguridad: Token CSRF no válido.");
+    }
 
-    // Consultamos en la tabla única 'usuario' que fusionamos anteriormente
-    $stmt = mysqli_prepare($con, "SELECT * FROM usuario WHERE usuario = ?");
-    mysqli_stmt_bind_param($stmt, "s", $username);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    $user = mysqli_fetch_assoc($result);
+    $database = new DB();
+    $db = $database->conectar();
+    $usuarioObj = new Usuario($db);
 
-    // 2. Validación de credenciales
-    if ($user && $password === $user['password']) {
-        
-        // Guardamos los datos del usuario en la sesión
-        $_SESSION['user'] = $user;
-        $_SESSION['rol'] = $user['rol']; 
+    $user_input = trim($_POST['username']);
+    $pass_input = trim($_POST['password']);
 
-        // 3. Redirección inteligente según el ROL guardado en la base de datos
-        if ($user['rol'] === 'admin') {
-            // El administrador va al panel de control
+    // Llamamos al método login de nuestra clase
+    $user_data = $usuarioObj->login($user_input, $pass_input);
+
+    if ($user_data) {
+        $_SESSION['user'] = $user_data;
+        $_SESSION['rol'] = $user_data['rol'];
+
+        // Redirección según rol (ajusté las rutas porque ya estás en /pages/)
+        if ($user_data['rol'] === 'admin') {
             header("Location: dashboard.php");
         } else {
-            // Cualquier otro rol (veterinario) va a sus citas
-            header("Location: pages/mis_citas.php");
+            header("Location: mis_citas.php");
         }
-        exit;
-
+        exit();
     } else {
         $error = "Acceso denegado: Usuario o contraseña incorrectos.";
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>El Colibrí - Iniciar Sesión</title>
-    <!-- CSS Externos -->
+
+    <!-- Boostrap y FontAwesome -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/css/style.css">
+    
+    <!-- IMPORTANTE: Ajuste de ruta para que el diseño no cambie -->
+    <link rel="stylesheet" href="../assets/css/style.css"> 
 </head>
 <body class="d-flex align-items-center min-vh-100 body-login">
 
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-5 col-lg-4">
-                
                 <div class="card shadow p-4 login-card">
+                    
                     <div class="text-center mb-4">
                         <h4 class="text-muted small">Clínica Veterinaria</h4>
-                        <h1 class="logo h2" style="color: #198754; font-weight: bold;">El <span style="color: #ff7f50;">Colibrí</span></h1>
+                        <h1 class="logo h2" style="color: #198754; font-weight: bold;">
+                            El <span style="color: #ff7f50;">Colibrí</span>
+                        </h1>
                     </div>
 
                     <?php if($error): ?>
@@ -68,6 +77,9 @@ if ($_POST) {
                     <?php endif; ?>
 
                     <form method="POST">
+                        <!-- Token CSRF oculto -->
+                        <input type="hidden" name="token_csrf" value="<?= TokenAntiCSRF::generarToken() ?>">
+
                         <div class="mb-3">
                             <label class="form-label fw-bold">Usuario</label>
                             <input type="text" name="username" class="form-control" placeholder="Nombre de usuario" required autofocus>
@@ -75,19 +87,19 @@ if ($_POST) {
 
                         <div class="mb-4">
                             <label class="form-label fw-bold">Contraseña</label>
-                            <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                            <input type="password" name="password" class="form-control" placeholder="........" required>
                         </div>
 
                         <button type="submit" class="btn btn-success w-100 py-2 fw-bold">
                             Iniciar Sesión
                         </button>
                     </form>
-                    
-                    <div class="text-center mt-4">
-                        <p class="text-muted small">© 2026 Clínica El Colibrí</p>
-                    </div>
-                </div>
 
+                    <div class="text-center mt-4">
+                        <p class="text-muted small">© 2024 Clínica El Colibrí</p>
+                    </div>
+
+                </div>
             </div>
         </div>
     </div>

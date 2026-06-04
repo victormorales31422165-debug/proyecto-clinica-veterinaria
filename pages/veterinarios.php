@@ -1,85 +1,68 @@
 <?php
-// 1. Manejo de sesión y seguridad (Solo Admin entra aquí)
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// Importamos la clase de seguridad CSRF
+// 1. IMPORTAR CLASES
+require_once '../clases/DB.php';
+require_once '../clases/Usuario.php';
 require_once '../includes/TokenAntiCSRF.php';
 
+// 2. SEGURIDAD Y OBJETOS
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
     $dest = (isset($_SESSION['rol']) && $_SESSION['rol'] === 'veterinario') ? 'mis_citas.php' : '../login.php';
     header("Location: $dest");
     exit();
 }
 
-require_once '../includes/header.php';
+$database = new DB();
+$db = $database->conectar();
+$usuarioObj = new Usuario($db);
 
 $mensaje = '';
 $error = '';
 
-// --- 2. LÓGICA DE PROCESAMIENTO (POST) ---
+// 3. PROCESAR ACCIONES (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    
-    // Validar Token CSRF antes de cualquier operación
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
         die("Error de seguridad: Token CSRF no válido.");
     }
 
-    $nombre = mysqli_real_escape_string($con, trim($_POST['nombre']));
-    $especialidad = mysqli_real_escape_string($con, trim($_POST['especialidad']));
-    $correo = mysqli_real_escape_string($con, trim($_POST['correo']));
-    $user_login = mysqli_real_escape_string($con, trim($_POST['usuario']));
-    $password = trim($_POST['password'] ?? '');
-
-    // ACCIÓN: CREAR NUEVO
+    // Crear Veterinario
     if (isset($_POST['crear'])) {
-        $check = mysqli_query($con, "SELECT id_veterinario FROM usuario WHERE usuario = '$user_login'");
-        if (mysqli_num_rows($check) > 0) {
-            $error = "El usuario '$user_login' ya existe.";
+        if ($usuarioObj->existeUsuario($_POST['usuario'])) {
+            $error = "El usuario '" . htmlspecialchars($_POST['usuario']) . "' ya existe.";
         } else {
-            // CONTRASEÑA POR DEFECTO REQUERIDA
-            $pass_default = 'veterinaria'; 
-            
-            $sql = "INSERT INTO usuario (nombre, rol, especialidad, correo, usuario, password) 
-                    VALUES ('$nombre', 'veterinario', '$especialidad', '$correo', '$user_login', '$pass_default')";
-            
-            if (mysqli_query($con, $sql)) {
+            if ($usuarioObj->crearVeterinarioDesdeAdmin($_POST)) {
                 $mensaje = "✅ Veterinario registrado. Contraseña asignada: <b>veterinaria</b>";
             }
         }
     }
 
-    // ACCIÓN: ACTUALIZAR EXISTENTE
+    // Actualizar Veterinario
     if (isset($_POST['actualizar'])) {
         $id = (int)$_POST['id_veterinario'];
-        // Si el admin escribe algo en el campo password, se cambia. Si no, se queda igual.
-        $pass_query = !empty($password) ? ", password='$password'" : "";
-        
-        $sql_upd = "UPDATE usuario SET nombre='$nombre', especialidad='$especialidad', correo='$correo', usuario='$user_login' $pass_query 
-                    WHERE id_veterinario=$id AND rol='veterinario'";
-        
-        if (mysqli_query($con, $sql_upd)) {
+        if ($usuarioObj->actualizarVeterinarioDesdeAdmin($id, $_POST)) {
             $mensaje = "✅ Información actualizada con éxito.";
         }
     }
 }
 
-// --- 3. LÓGICA DE ELIMINACIÓN (GET) ---
+// 4. PROCESAR ACCIONES (GET)
 if (isset($_GET['eliminar'])) {
-    $id = (int)$_GET['eliminar'];
-    mysqli_query($con, "DELETE FROM usuario WHERE id_veterinario = $id AND rol='veterinario'");
-    $mensaje = "Registro eliminado del sistema.";
+    if ($usuarioObj->eliminarVeterinario((int)$_GET['eliminar'])) {
+        $mensaje = "Registro eliminado del sistema.";
+    }
 }
 
-// --- 4. PREPARAR DATOS PARA EDICIÓN ---
 $editRow = null;
 if (isset($_GET['editar'])) {
-    $id = (int)$_GET['editar'];
-    $res = mysqli_query($con, "SELECT * FROM usuario WHERE id_veterinario=$id AND rol='veterinario'");
-    $editRow = mysqli_fetch_assoc($res);
+    $editRow = $usuarioObj->obtenerPerfil((int)$_GET['editar']);
 }
 
-// Consulta para la tabla inferior
-$veterinarios = mysqli_query($con, "SELECT * FROM usuario WHERE rol = 'veterinario' ORDER BY nombre ASC");
+// 5. OBTENER LISTADO
+$resultadoVet = $usuarioObj->listarVeterinarios();
+$listado = $resultadoVet->fetchAll(PDO::FETCH_ASSOC);
+
+require_once '../includes/header.php';
 ?>
 
 <div class="container-fluid">
@@ -88,7 +71,7 @@ $veterinarios = mysqli_query($con, "SELECT * FROM usuario WHERE rol = 'veterinar
     <?php if($mensaje) echo "<div class='alert alert-success alert-dismissible fade show shadow-sm'>$mensaje<button type='button' class='btn-close' data-bs-dismiss='alert'></button></div>"; ?>
     <?php if($error) echo "<div class='alert alert-danger shadow-sm'>$error</div>"; ?>
 
-    <!-- SECCIÓN SUPERIOR: FORMULARIO -->
+    <!-- Formulario (Diseño intacto) -->
     <div class="card mb-5 shadow-sm border-0">
         <div class="card-header <?= $editRow ? 'bg-warning text-dark' : 'bg-success text-white' ?> fw-bold">
             <i class="fas <?= $editRow ? 'fa-edit' : 'fa-plus-circle' ?>"></i> 
@@ -142,7 +125,7 @@ $veterinarios = mysqli_query($con, "SELECT * FROM usuario WHERE rol = 'veterinar
         </div>
     </div>
 
-    <!-- SECCIÓN INFERIOR: LISTADO -->
+    <!-- Tabla (Diseño intacto) -->
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white py-3">
             <h5 class="mb-0 text-muted"><i class="fas fa-list"></i> Personal Médico Registrado</h5>
@@ -159,8 +142,8 @@ $veterinarios = mysqli_query($con, "SELECT * FROM usuario WHERE rol = 'veterinar
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if(mysqli_num_rows($veterinarios) > 0): ?>
-                        <?php while ($v = mysqli_fetch_assoc($veterinarios)): ?>
+                    <?php if(count($listado) > 0): ?>
+                        <?php foreach ($listado as $v): ?>
                         <tr>
                             <td class="ps-3 fw-bold"><?= htmlspecialchars($v['nombre']) ?></td>
                             <td><span class="badge bg-info text-dark"><?= htmlspecialchars($v['especialidad']) ?></span></td>
@@ -175,7 +158,7 @@ $veterinarios = mysqli_query($con, "SELECT * FROM usuario WHERE rol = 'veterinar
                                 </a>
                             </td>
                         </tr>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     <?php else: ?>
                         <tr><td colspan="5" class="text-center p-5 text-muted">No hay médicos registrados actualmente.</td></tr>
                     <?php endif; ?>

@@ -1,73 +1,65 @@
 <?php 
-require '../includes/header.php'; 
-// 1. Importar la clase de seguridad
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+
+// 1. IMPORTAR CLASES
+require_once '../clases/DB.php';
+require_once '../clases/Cliente.php';
 require_once '../includes/TokenAntiCSRF.php';
 
+// 2. INICIALIZAR
+$database = new DB();
+$db = $database->conectar();
+$clienteObj = new Cliente($db);
+
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
-    // Si no es admin, lo mandamos a sus citas (si es vet) o al login
     $folder = (isset($_SESSION['rol']) && $_SESSION['rol'] === 'veterinario') ? 'mis_citas.php' : '../login.php';
     header("Location: $folder");
     exit();
 }
 
+require '../includes/header.php'; 
+
 $mensaje = '';
 $error = '';
 
-if (isset($_POST['crear'])) {
-    // 2. VALIDACIÓN DEL TOKEN CSRF PARA CREAR
+// 3. PROCESAR ACCIONES (POST)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
         die("Error de seguridad: Token CSRF no válido.");
     }
 
-    $nombre = trim($_POST['nombre']);
-    $apellido = trim($_POST['apellido']);
-    $direccion = trim($_POST['direccion']);
-    $telefono = trim($_POST['telefono']);
-    $correo = trim($_POST['correo']);
+    if (isset($_POST['crear'])) {
+        if (empty($_POST['nombre']) || empty($_POST['apellido']) || empty($_POST['telefono']) || empty($_POST['correo'])) {
+            $error = "Nombre, Apellido, Teléfono y Correo son obligatorios.";
+        } elseif (!filter_var($_POST['correo'], FILTER_VALIDATE_EMAIL)) {
+            $error = "Correo inválido.";
+        } else {
+            if($clienteObj->crear($_POST)) {
+                $mensaje = "✅ Cliente guardado correctamente";
+            }
+        }
+    }
 
-    if (empty($nombre) || empty($apellido) || empty($telefono) || empty($correo)) {
-        $error = "Nombre, Apellido, Teléfono y Correo son obligatorios.";
-    } elseif (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
-        $error = "Correo inválido.";
-    } else {
-        $nombre = mysqli_real_escape_string($con, $nombre);
-        $apellido = mysqli_real_escape_string($con, $apellido);
-        $direccion = mysqli_real_escape_string($con, $direccion);
-        $telefono = mysqli_real_escape_string($con, $telefono);
-        $correo = mysqli_real_escape_string($con, $correo);
-
-        mysqli_query($con, "INSERT INTO cliente VALUES (null, '$nombre', '$apellido', '$direccion', '$telefono', '$correo')");
-        $mensaje = "✅ Cliente guardado correctamente";
+    if (isset($_POST['actualizar'])) {
+        if($clienteObj->actualizar($_POST)) {
+            $mensaje = "✅ Cliente actualizado correctamente";
+        }
     }
 }
 
-// Actualizar
-if (isset($_POST['actualizar'])) {
-    // 3. VALIDACIÓN DEL TOKEN CSRF PARA ACTUALIZAR
-    if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
-        die("Error de seguridad: Token CSRF no válido.");
-    }
-
-    $id = (int)$_POST['id_cliente'];
-    $nombre = mysqli_real_escape_string($con, trim($_POST['nombre']));
-    $apellido = mysqli_real_escape_string($con, trim($_POST['apellido']));
-    $direccion = mysqli_real_escape_string($con, trim($_POST['direccion']));
-    $telefono = mysqli_real_escape_string($con, trim($_POST['telefono']));
-    $correo = mysqli_real_escape_string($con, trim($_POST['correo']));
-
-    mysqli_query($con, "UPDATE cliente SET nombre='$nombre', apellido='$apellido', direccion='$direccion', 
-                        telefono='$telefono', correo='$correo' WHERE id_cliente=$id");
-    $mensaje = "✅ Cliente actualizado correctamente";
-}
-
-// Eliminar
+// 4. PROCESAR ACCIONES (GET)
 if (isset($_GET['eliminar'])) {
-    $id = (int)$_GET['eliminar'];
-    mysqli_query($con, "DELETE FROM cliente WHERE id_cliente = $id");
-    $mensaje = "Cliente eliminado";
+    if($clienteObj->eliminar((int)$_GET['eliminar'])) {
+        $mensaje = "Cliente eliminado";
+    }
 }
 
-$result = mysqli_query($con, "SELECT * FROM cliente ORDER BY apellido");
+$editData = null;
+if (isset($_GET['editar'])) {
+    $editData = $clienteObj->obtenerPorId((int)$_GET['editar']);
+}
+
+$listaClientes = $clienteObj->leerTodos();
 ?>
 
 <h2><i class="fas fa-users"></i> Gestión de Clientes</h2>
@@ -77,50 +69,45 @@ $result = mysqli_query($con, "SELECT * FROM cliente ORDER BY apellido");
 
 <div class="card mb-4">
     <div class="card-header bg-success text-white">
-        <h5><?= isset($_GET['editar']) ? 'Editar Cliente' : 'Nuevo Cliente' ?></h5>
+        <h5><?= $editData ? 'Editar Cliente' : 'Nuevo Cliente' ?></h5>
     </div>
     <div class="card-body">
         <form method="POST">
-            <!-- 4. CAMPO OCULTO PARA EL TOKEN CSRF -->
             <input type="hidden" name="token_csrf" value="<?= TokenAntiCSRF::generarToken() ?>">
 
-            <?php 
-            if (isset($_GET['editar'])) {
-                $id = (int)$_GET['editar'];
-                $row = mysqli_fetch_assoc(mysqli_query($con, "SELECT * FROM cliente WHERE id_cliente=$id"));
-            ?>
-                <input type="hidden" name="id_cliente" value="<?= $row['id_cliente'] ?>">
-            <?php } ?>
+            <?php if ($editData): ?>
+                <input type="hidden" name="id_cliente" value="<?= $editData['id_cliente'] ?>">
+            <?php endif; ?>
 
             <div class="row">
                 <div class="col-md-4">
                     <label>Nombre <span class="text-danger">*</span></label>
-                    <input type="text" name="nombre" class="form-control" value="<?= htmlspecialchars($row['nombre'] ?? '') ?>" required>
+                    <input type="text" name="nombre" class="form-control" value="<?= htmlspecialchars($editData['nombre'] ?? '') ?>" required>
                 </div>
                 <div class="col-md-4">
                     <label>Apellido <span class="text-danger">*</span></label>
-                    <input type="text" name="apellido" class="form-control" value="<?= htmlspecialchars($row['apellido'] ?? '') ?>" required>
+                    <input type="text" name="apellido" class="form-control" value="<?= htmlspecialchars($editData['apellido'] ?? '') ?>" required>
                 </div>
                 <div class="col-md-4">
                     <label>Teléfono <span class="text-danger">*</span></label>
-                    <input type="text" name="telefono" class="form-control" value="<?= htmlspecialchars($row['telefono'] ?? '') ?>" required>
+                    <input type="text" name="telefono" class="form-control" value="<?= htmlspecialchars($editData['telefono'] ?? '') ?>" required>
                 </div>
             </div>
             <div class="row mt-3">
                 <div class="col-md-6">
                     <label>Correo <span class="text-danger">*</span></label>
-                    <input type="email" name="correo" class="form-control" value="<?= htmlspecialchars($row['correo'] ?? '') ?>" required>
+                    <input type="email" name="correo" class="form-control" value="<?= htmlspecialchars($editData['correo'] ?? '') ?>" required>
                 </div>
                 <div class="col-md-6">
                     <label>Dirección</label>
-                    <input type="text" name="direccion" class="form-control" value="<?= htmlspecialchars($row['direccion'] ?? '') ?>">
+                    <input type="text" name="direccion" class="form-control" value="<?= htmlspecialchars($editData['direccion'] ?? '') ?>">
                 </div>
             </div>
 
-            <button type="submit" name="<?= isset($_GET['editar']) ? 'actualizar' : 'crear' ?>" class="btn btn-success mt-3">
-                <?= isset($_GET['editar']) ? 'Actualizar' : 'Guardar' ?> Cliente
+            <button type="submit" name="<?= $editData ? 'actualizar' : 'crear' ?>" class="btn btn-success mt-3">
+                <?= $editData ? 'Actualizar' : 'Guardar' ?> Cliente
             </button>
-            <?php if (isset($_GET['editar'])): ?>
+            <?php if ($editData): ?>
                 <a href="clientes.php" class="btn btn-secondary mt-3">Cancelar</a>
             <?php endif; ?>
         </form>
@@ -149,7 +136,7 @@ $result = mysqli_query($con, "SELECT * FROM cliente ORDER BY apellido");
         </tr>
     </thead>
     <tbody>
-        <?php while ($row = mysqli_fetch_assoc($result)): ?>
+        <?php while ($row = $listaClientes->fetch(PDO::FETCH_ASSOC)): ?>
         <tr>
             <td><?= $row['id_cliente'] ?></td>
             <td><?= htmlspecialchars($row['nombre'].' '.$row['apellido']) ?></td>

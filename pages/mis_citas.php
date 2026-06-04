@@ -1,42 +1,44 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-require_once '../config/db.php';
-// 1. Importar la clase de seguridad
+
+// 1. IMPORTAR CLASES
+require_once '../clases/DB.php';
+require_once '../clases/Cita.php';
 require_once '../includes/TokenAntiCSRF.php';
 
+// 2. SEGURIDAD Y OBJETOS
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'veterinario') {
     header("Location: ../login.php"); exit();
 }
 
-require_once '../includes/header.php';
+$database = new DB();
+$db = $database->conectar();
+$citaObj = new Cita($db);
 
 $id_vet = $_SESSION['user']['id_veterinario'];
 $mensaje = '';
 
-// 2. Lógica para guardar el diagnóstico con validación CSRF
+// 3. PROCESAR DIAGNÓSTICO (POST)
 if (isset($_POST['guardar_diag'])) {
-    // Validación del Token
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
         die("Error de seguridad: Token CSRF no válido.");
     }
 
     $id_cita = (int)$_POST['id_cita'];
-    $diagnostico = mysqli_real_escape_string($con, $_POST['diagnostico']);
-    mysqli_query($con, "UPDATE cita SET diagnostico = '$diagnostico', estado = 'Completada' WHERE id_cita = $id_cita");
-    $mensaje = "✅ Diagnóstico guardado y cita finalizada correctamente.";
+    $diagnostico = $_POST['diagnostico'];
+
+    // Usamos el método que ya definimos en Cita.php anteriormente
+    if($citaObj->agregarDiagnostico($id_cita, $diagnostico)) {
+        $mensaje = "✅ Diagnóstico guardado y cita finalizada correctamente.";
+    }
 }
 
-// Consultar citas
-$query = "SELECT c.*, m.nombre as mascota, cl.nombre as dueño, cl.apellido 
-          FROM cita c 
-          JOIN mascota m ON c.id_mascota = m.id_mascota 
-          JOIN cliente cl ON m.id_cliente = cl.id_cliente
-          WHERE c.id_veterinario = $id_vet 
-          ORDER BY c.fecha_hora DESC";
-$mis_citas = mysqli_query($con, $query);
+// 4. OBTENER CITAS ASIGNADAS
+$resultado = $citaObj->leerPorVeterinario($id_vet);
+// Convertimos a array para poder contar los registros como hacías antes
+$data_citas = $resultado->fetchAll(PDO::FETCH_ASSOC);
 
-$data_citas = [];
-while($fila = mysqli_fetch_assoc($mis_citas)) { $data_citas[] = $fila; }
+require_once '../includes/header.php';
 ?>
 
 <div class="container mt-4">
@@ -68,13 +70,17 @@ while($fila = mysqli_fetch_assoc($mis_citas)) { $data_citas[] = $fila; }
                             <td class="fw-bold"><?= htmlspecialchars($c['mascota']) ?></td>
                             <td><?= htmlspecialchars($c['dueño'] . ' ' . $c['apellido']) ?></td>
                             <td><small><?= htmlspecialchars($c['motivo'] ?? 'Sin especificar') ?></small></td>
-                            <td><span class="badge rounded-pill <?= $c['estado'] == 'pendiente' ? 'bg-warning text-dark' : 'bg-success' ?>"><?= ucfirst($c['estado']) ?></span></td>
+                            <td>
+                                <span class="badge rounded-pill <?= $c['estado'] == 'pendiente' ? 'bg-warning text-dark' : 'bg-success' ?>">
+                                    <?= ucfirst($c['estado']) ?>
+                                </span>
+                            </td>
                             <td class="text-center">
-                            <!-- Enlace a la página detallada -->
-                            <a href="atender_cita.php?id=<?= $c['id_cita'] ?>" class="btn btn-primary btn-sm px-3 shadow-sm">
-                                <i class="fas fa-stethoscope"></i> Atender
-                            </a>
-                        </td>
+                                <!-- Enlace a la página detallada (Se mantiene igual) -->
+                                <a href="atender_cita.php?id=<?= $c['id_cita'] ?>" class="btn btn-primary btn-sm px-3 shadow-sm">
+                                    <i class="fas fa-stethoscope"></i> Atender
+                                </a>
+                            </td>
                         </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
@@ -85,6 +91,5 @@ while($fila = mysqli_fetch_assoc($mis_citas)) { $data_citas[] = $fila; }
         </div>
     </div>
 </div>
-
 
 <?php require_once '../includes/footer.php'; ?>

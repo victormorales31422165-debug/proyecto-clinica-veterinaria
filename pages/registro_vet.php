@@ -1,35 +1,47 @@
 <?php
-require 'config/db.php';
-$mensaje = "";
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
+// 1. IMPORTAMOS LAS CLASES
+require_once '../clases/DB.php';
+require_once '../clases/Usuario.php';
+require_once '../includes/TokenAntiCSRF.php';
+
+$error = "";
+
+// 2. PROCESAR EL POST
 if ($_POST) {
-  
-    $nombre = mysqli_real_escape_string($con, $_POST['nombre']);
-    $especialidad = mysqli_real_escape_string($con, $_POST['especialidad']);
-    $telefono = mysqli_real_escape_string($con, $_POST['telefono']);
-    $usuario_ingresado = mysqli_real_escape_string($con, $_POST['usuario']);
-    $password = mysqli_real_escape_string($con, $_POST['password']);
+    // Validar Token CSRF
+    if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
+        die("Error de seguridad: Token CSRF no válido.");
+    }
 
-    
-    $check = mysqli_query($con, "SELECT * FROM usuario WHERE usuario = '$usuario_ingresado'");
-    
-    if (mysqli_num_rows($check) > 0) {
+    $database = new DB();
+    $db = $database->conectar();
+    $usuarioObj = new Usuario($db);
+
+    $datos = [
+        'nombre' => trim($_POST['nombre']),
+        'especialidad' => trim($_POST['especialidad']),
+        'telefono' => trim($_POST['telefono']),
+        'usuario' => trim($_POST['usuario']),
+        'password' => $_POST['password']
+    ];
+
+    // Verificar si el usuario existe
+    if ($usuarioObj->existeUsuario($datos['usuario'])) {
         $error = "El nombre de usuario ya está en uso.";
     } else {
-       
-        $sql = "INSERT INTO usuario (nombre, rol, especialidad, telefono, usuario, password) 
-                VALUES ('$nombre', 'veterinario', '$especialidad', '$telefono', '$usuario_ingresado', '$password')";
-        
-        if (mysqli_query($con, $sql)) {
-           
+        // Intentar registrar
+        if ($usuarioObj->registrarVeterinario($datos)) {
             header("Location: login.php?registro=exitoso");
             exit;
         } else {
-            $error = "Error al registrar en la base de datos: " . mysqli_error($con);
+            $error = "Error al registrar en la base de datos.";
         }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -37,9 +49,11 @@ if ($_POST) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro Veterinario - El Colibrí</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css">
+    <!-- Ajuste de ruta para el CSS -->
+    <link rel="stylesheet" href="../assets/css/style.css">
 </head>
-<body class="d-flex align-items-center min-vh-100" style="background: url('assets/img/background.png'); background-size: cover;">
+<!-- Se mantiene el fondo y el diseño intacto -->
+<body class="d-flex align-items-center min-vh-100" style="background: url('../assets/img/background.png'); background-size: cover;">
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-5">
@@ -49,9 +63,12 @@ if ($_POST) {
                         <h1 class="logo" style="color: #198754; font-weight: bold;">El <span style="color: #ff7f50;">Colibrí</span></h1>
                     </div>
 
-                    <?php if(isset($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
+                    <?php if($error) echo "<div class='alert alert-danger'>$error</div>"; ?>
 
                     <form method="POST">
+                        <!-- Token CSRF -->
+                        <input type="hidden" name="token_csrf" value="<?= TokenAntiCSRF::generarToken() ?>">
+
                         <div class="mb-3">
                             <label class="form-label fw-bold">Nombre Completo</label>
                             <input type="text" name="nombre" class="form-control" placeholder="Ej: Dr. Juan Pérez" required>
