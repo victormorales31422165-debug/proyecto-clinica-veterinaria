@@ -97,7 +97,7 @@ $tokenEliminar = TokenAntiCSRF::generarToken();
                         <tr>
                             <td class="ps-3 fw-bold"><?= htmlspecialchars($rc['mascota_nombre']) ?></td>
                             <td><?= htmlspecialchars($rc['vet_nombre'] ?? 'Sin asignar') ?></td>
-                            <td><span class="badge rounded-pill bg-warning text-dark"><?= $rc['estado'] ?></span></td>
+                            <td><span class="badge rounded-pill <?= ($rc['estado'] == 'completada' ? 'bg-success' : 'bg-warning text-dark') ?>"><?= htmlspecialchars($rc['estado']) ?></span></td>
                             <td class="text-center">
                                 <!-- BOTÓN ACTUALIZADO: Usa el modal dinámico del footer -->
                                 <button class="btn btn-sm btn-outline-info" 
