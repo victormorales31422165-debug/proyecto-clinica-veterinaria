@@ -25,7 +25,9 @@ $usuarioObj = new Usuario($db);
 
 require_once '../includes/header.php';
 
-// Función de envío de correos profesional
+/**
+ * Función de envío de correos profesional (HTML)
+ */
 function enviarAviso($usuarioObj, $mascotaObj, $id_v, $fh, $id_m) {
     $v = $usuarioObj->obtenerPerfil($id_v);
     $m = $mascotaObj->obtenerPorId($id_m);
@@ -33,7 +35,7 @@ function enviarAviso($usuarioObj, $mascotaObj, $id_v, $fh, $id_m) {
     if ($v && !empty($v['correo'])) {
         $mail = new PHPMailer(true);
         try {
-            // Configuración del servidor
+            // Configuración SMTP
             $mail->CharSet = 'UTF-8';
             $mail->isSMTP();
             $mail->Host = 'smtp.gmail.com';
@@ -44,55 +46,48 @@ function enviarAviso($usuarioObj, $mascotaObj, $id_v, $fh, $id_m) {
             $mail->Port = 587;
 
             // Destinatarios
-            $mail->setFrom('clinica@elcolibri.com', 'Clínica Veterinaria El Colibrí');
+            $mail->setFrom('clinicaveterinariaelcolibri1@gmail.com', 'Clínica Veterinaria El Colibrí');
             $mail->addAddress($v['correo'], $v['nombre']);
 
-            // Contenido del Correo
+            // Contenido HTML
             $mail->isHTML(true);                                  
-            $mail->Subject = '📋 Nueva Cita Asignada - ' . htmlspecialchars($m['nombre']);
+            $mail->Subject = 'NOTIFICACIÓN MÉDICA: Cita programada para:' . htmlspecialchars($m['nombre']);
 
-            // Formateamos la fecha y hora para que sea legible
-            $fechaFormateada = date('d/m/Y', strtotime($fh));
-            $horaFormateada = date('h:i A', strtotime($fh));
+            $fechaF = date('d/m/Y', strtotime($fh));
+            $horaF = date('h:i A', strtotime($fh));
 
-            // DISEÑO DE LA PLANTILLA HTML PROFESIONAL
-            $cuerpo = "
+            $mail->Body = "
             <html>
-            <body style='font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; margin: 0;'>
-                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);'>
+            <body style='font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #ddd;'>
                     <div style='background-color: #198754; padding: 25px; text-align: center;'>
-                        <h1 style='color: #ffffff; margin: 0; font-size: 28px; letter-spacing: 1px;'>El <span style='color: #FF7F50;'>Colibrí</span></h1>
-                        <p style='color: #e0e0e0; margin: 5px 0 0 0; font-size: 14px; text-transform: uppercase;'>Clínica Veterinaria</p>
+                        <h1 style='color: #ffffff; margin: 0;'>El <span style='color: #FF7F50;'>Colibrí</span></h1>
+                        <p style='color: #e0e0e0; margin: 5px 0 0 0;'>Clínica Veterinaria</p>
                     </div>
-                    <div style='padding: 35px; color: #333333;'>
-                        <h2 style='color: #198754; margin-top: 0;'>Hola, Dr. " . htmlspecialchars($v['nombre']) . "</h2>
-                        <p style='font-size: 16px; line-height: 1.6; color: #555555;'>
-                            Le informamos que se ha programado una nueva cita médica y usted ha sido asignado como el médico responsable.
+                    <div style='padding: 30px; color: #333;'>
+                        <h2 style='color: #198754;'>Hola, Dr. " . htmlspecialchars($v['nombre']) . "</h2>
+                        <p>Se le ha asignado una nueva cita médica. Detalles del paciente:</p>
+                        <div style='background-color: #f9f9f9; border-left: 5px solid #FF7F50; padding: 15px; margin: 20px 0;'>
+                            <p><strong>🐾 Mascota:</strong> " . htmlspecialchars($m['nombre']) . "</p>
+                            <p><strong>📅 Fecha:</strong> $fechaF</p>
+                            <p><strong>⏰ Hora:</strong> $horaF</p>
+                            <p><strong>🩺 Especie:</strong> " . htmlspecialchars($m['especie']) . "</p>
+                        </div>
                         </p>
-                        <div style='background-color: #fcfcfc; border: 1px solid #eeeeee; border-left: 5px solid #FF7F50; padding: 20px; margin: 25px 0; border-radius: 4px;'>
-                            <h3 style='margin-top: 0; font-size: 16px; color: #198754;'>Detalles del Paciente:</h3>
-                            <p style='margin: 8px 0; font-size: 15px;'><strong>🐾 Mascota:</strong> " . htmlspecialchars($m['nombre']) . "</p>
-                            <p style='margin: 8px 0; font-size: 15px;'><strong>📅 Fecha:</strong> " . $fechaFormateada . "</p>
-                            <p style='margin: 8px 0; font-size: 15px;'><strong>⏰ Hora:</strong> " . $horaFormateada . "</p>
-                            <p style='margin: 8px 0; font-size: 15px;'><strong>🩺 Especie/Raza:</strong> " . htmlspecialchars($m['especie']) . " - " . htmlspecialchars($m['raza']) . "</p>
-                        </div>
-                        <p style='font-size: 15px; color: #555555;'>Recuerde revisar el historial clínico en el panel administrativo antes de la atención.</p>
-                        <div style='text-align: center; margin-top: 35px;'>
-                            <a href='http://localhost/clinica-colibri/' style='background-color: #FF7F50; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.1);'>Acceder al Sistema</a>
-                        </div>
+                           <p style='font-size: 15px; color: #555555;'>Consulte los detalles en el panel de sus citas asignadas de la clínica.</p>
                     </div>
-                    <div style='background-color: #f8f9fa; padding: 20px; text-align: center; color: #999999; font-size: 12px; border-top: 1px solid #eeeeee;'>
-                        <p style='margin: 0;'>Este es un mensaje automático generado por el Sistema Colibrí.</p>
-                        <p style='margin: 5px 0 0 0;'>&copy; " . date('Y') . " Clínica Veterinaria El Colibrí</p>
+                    <div style='background-color: #eee; padding: 15px; text-align: center; font-size: 12px; color: #777;'>
+                        &copy; " . date('Y') . " Clínica Veterinaria El Colibrí
                     </div>
                 </div>
             </body>
             </html>";
 
-            $mail->Body = $cuerpo;
-            $mail->AltBody = "Nueva cita para " . $m['nombre'] . " el " . $fechaFormateada . " a las " . $horaFormateada;
+            $mail->AltBody = "Nueva cita para " . $m['nombre'] . " el $fechaF a las $horaF";
             $mail->send();
-        } catch (Exception $e) {}
+        } catch (Exception $e) {
+            error_log("Error PHPMailer: " . $mail->ErrorInfo);
+        }
     }
 }
 
@@ -102,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_POST['crear_cita'])) {
         if($citaObj->crearCitaCompleta($_POST)) {
+            // IMPORTANTE: Enviar aviso solo si se seleccionó un veterinario
             if(!empty($_POST['id_veterinario'])) {
                 enviarAviso($usuarioObj, $mascotaObj, $_POST['id_veterinario'], $_POST['fecha_hora'], $_POST['id_mascota']);
             }
@@ -135,7 +131,7 @@ $citas = $citaObj->leerTodas();
 <div class="container-fluid mt-3">
     <h2 class="mb-4">Gestión de Citas</h2>
 
-    <!-- Formulario (Diseño intacto) -->
+    <!-- Formulario -->
     <div class="card mb-4 shadow-sm border-0">
         <div class="card-header bg-primary text-white fw-bold">
             <?= $editRow ? 'Editar Cita' : 'Programar Nueva Cita' ?>
@@ -167,7 +163,10 @@ $citas = $citaObj->leerTodas();
                         <label class="form-label fw-bold">Veterinario</label>
                         <select name="id_veterinario" class="form-select">
                             <option value="">Sin asignar</option>
-                            <?php while($v = $veterinarios->fetch(PDO::FETCH_ASSOC)): ?>
+                            <?php 
+                            // Reiniciamos el puntero si es necesario o usamos el listado fresco
+                            $vets = $usuarioObj->listarVeterinarios(); 
+                            while($v = $vets->fetch(PDO::FETCH_ASSOC)): ?>
                                 <option value="<?= $v['id_veterinario'] ?>" <?= (($editRow['id_veterinario'] ?? '') == $v['id_veterinario'] ? 'selected' : '') ?>>
                                     <?= htmlspecialchars($v['nombre']) ?>
                                 </option>
@@ -193,7 +192,7 @@ $citas = $citaObj->leerTodas();
         </div>
     </div>
 
-    <!-- Tabla (Diseño intacto con la corrección de color en estado) -->
+    <!-- Tabla -->
     <div class="card shadow-sm border-0">
         <div class="card-body p-0">
             <table class="table table-hover align-middle mb-0">
@@ -213,28 +212,22 @@ $citas = $citaObj->leerTodas();
                             <?= date('d/m/Y', strtotime($c['fecha_hora'])) ?> 
                             <small class="text-muted">(<?= date('H:i', strtotime($c['fecha_hora'])) ?>)</small>
                         </td>
-                        <td class="fw-bold"><?= htmlspecialchars($c['nombre_mascota'] ?? $c['m_nom'] ?? 'N/A') ?></td>
+                        <td class="fw-bold"><?= htmlspecialchars($c['nombre_mascota'] ?? 'N/A') ?></td>
+                        <!-- Aquí se muestra el veterinario usando el alias v_nom -->
                         <td><?= htmlspecialchars($c['v_nom'] ?? 'Sin asignar') ?></td>
-                        <!-- CAMBIO AQUÍ: Color verde si está completada -->
                         <td>
                             <span class="badge <?= ($c['estado'] == 'completada' ? 'bg-success' : 'bg-warning text-dark') ?>">
                                 <?= htmlspecialchars($c['estado']) ?>
                             </span>
                         </td>
                         <td class="text-center">
-                            <button class="btn btn-sm btn-outline-info" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#modalMotivo" 
-                                    data-mascota="<?= htmlspecialchars($c['nombre_mascota'] ?? $c['m_nom'] ?? 'N/A') ?>" 
-                                    data-motivo="<?= htmlspecialchars($c['motivo'] ?? 'Sin motivo registrado') ?>">
+                            <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#modalMotivo" 
+                                    data-mascota="<?= htmlspecialchars($c['nombre_mascota'] ?? 'N/A') ?>" 
+                                    data-motivo="<?= htmlspecialchars($c['motivo'] ?? 'Sin motivo') ?>">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <a href="?editar=<?= $c['id_cita'] ?>" class="btn btn-sm btn-outline-warning">
-                                <i class="fas fa-pen"></i>
-                            </a>
-                            <a href="?eliminar=<?= $c['id_cita'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Borrar?')">
-                                <i class="fas fa-trash"></i>
-                            </a>
+                            <a href="?editar=<?= $c['id_cita'] ?>" class="btn btn-sm btn-outline-warning"><i class="fas fa-pen"></i></a>
+                            <a href="?eliminar=<?= $c['id_cita'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Borrar?')"><i class="fas fa-trash"></i></a>
                         </td>
                     </tr>
                     <?php endwhile; ?>
