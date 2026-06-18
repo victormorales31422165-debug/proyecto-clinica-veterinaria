@@ -7,7 +7,7 @@ class Cliente {
         $this->conexion = $db;
     }
 
-    // Leer todos los clientes
+    
     public function leerTodos() {
         $query = "SELECT * FROM " . $this->tabla . " ORDER BY apellido ASC";
         $stmt = $this->conexion->prepare($query);
@@ -15,7 +15,7 @@ class Cliente {
         return $stmt;
     }
 
-    // Obtener un cliente por ID
+    
     public function obtenerPorId($id) {
         $query = "SELECT * FROM " . $this->tabla . " WHERE id_cliente = :id";
         $stmt = $this->conexion->prepare($query);
@@ -24,7 +24,7 @@ class Cliente {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    // Crear cliente
+   
     public function crear($datos) {
         $query = "INSERT INTO " . $this->tabla . " (nombre, apellido, direccion, telefono, correo) 
                   VALUES (:nombre, :apellido, :direccion, :telefono, :correo)";
@@ -39,7 +39,7 @@ class Cliente {
         return $stmt->execute();
     }
 
-    // Actualizar cliente
+    
     public function actualizar($datos) {
         $query = "UPDATE " . $this->tabla . " 
                   SET nombre=:nombre, apellido=:apellido, direccion=:direccion, 
@@ -57,7 +57,7 @@ class Cliente {
         return $stmt->execute();
     }
 
-    // Eliminar cliente
+    
     public function eliminar($id) {
         $query = "DELETE FROM " . $this->tabla . " WHERE id_cliente = :id";
         $stmt = $this->conexion->prepare($query);

@@ -1,7 +1,7 @@
 <?php
 class DB {
     private $host = "localhost";
-    private $db_name = "clinica_colibri"; // Cambia esto al nombre de tu BD
+    private $db_name = "clinica_colibri"; 
     private $usuario = "root";
     private $password = "";
     public $conexion;

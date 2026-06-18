@@ -1,12 +1,12 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// 1. IMPORTAR LIBRERÍAS Y CLASES
+
 require_once '../vendor/autoload.php';
 require_once '../clases/DB.php';
 require_once '../clases/Cita.php';
 
-// 2. CONEXIÓN Y OBTENCIÓN DE DATOS (POO)
+
 if (!isset($_GET['id'])) { die("ID de cita no proporcionado."); }
 
 $id_cita = (int)$_GET['id'];
@@ -14,12 +14,12 @@ $database = new DB();
 $db = $database->conectar();
 $citaObj = new Cita($db);
 
-// Obtenemos los datos en la variable $d para que el código de abajo no cambie
+
 $d = $citaObj->obtenerDatosReporte($id_cita);
 
 if (!$d) { die("Cita no encontrada."); }
 
-// 3. CLASE PDF (Lógica visual intacta)
+
 class PDF extends \FPDF {
     protected $vet_nom;
     protected $vet_esp;
@@ -31,7 +31,7 @@ class PDF extends \FPDF {
 
     function Header() {
         $this->SetFont('Arial', 'B', 18);
-        $this->SetTextColor(25, 135, 84); // Tu verde institucional
+        $this->SetTextColor(25, 135, 84); 
         $this->Cell(0, 10, utf8_decode('CLÍNICA VETERINARIA EL COLIBRÍ'), 0, 1, 'C');
         
         $this->SetFont('Arial', '', 10);
@@ -65,21 +65,21 @@ class PDF extends \FPDF {
     }
 }
 
-// 4. GENERACIÓN DEL PDF (Contenido intacto)
+
 $pdf = new PDF();
 $pdf->setVetData($d['vet_nom'], $d['vet_esp']);
 $pdf->AliasNbPages();
 $pdf->AddPage();
 $pdf->SetMargins(15, 15, 15);
 
-// Encabezado del Informe
+
 $pdf->SetFillColor(245, 245, 245);
 $pdf->SetFont('Arial', 'B', 14);
 $pdf->SetTextColor(68, 68, 68);
 $pdf->Cell(0, 12, utf8_decode('INFORME DE ATENCIÓN MÉDICA'), 0, 1, 'C', true);
 $pdf->Ln(10);
 
-// Sección Datos
+
 $pdf->SetFont('Arial', 'B', 11);
 $pdf->SetTextColor(25, 135, 84);
 $pdf->Cell(95, 7, utf8_decode('DATOS DEL PACIENTE'), 0, 0);
@@ -96,7 +96,7 @@ $pdf->Cell(95, 6, utf8_decode('Fecha: ' . date('d/m/Y H:i', strtotime($d['fecha_
 $pdf->Cell(95, 6, utf8_decode('Edad: ' . $d['edad'] . ' años'), 0, 1);
 $pdf->Ln(10);
 
-// Sección Motivo
+
 $pdf->SetFont('Arial', 'B', 11);
 $pdf->SetTextColor(25, 135, 84);
 $pdf->Cell(0, 7, utf8_decode('MOTIVO DE CONSULTA'), 0, 1);
@@ -105,7 +105,7 @@ $pdf->SetTextColor(50);
 $pdf->MultiCell(0, 6, utf8_decode($d['motivo']), 0, 'L');
 $pdf->Ln(10);
 
-// Sección Diagnóstico
+
 $pdf->SetFont('Arial', 'B', 11);
 $pdf->SetTextColor(25, 135, 84);
 $pdf->Cell(0, 7, utf8_decode('DIAGNÓSTICO Y TRATAMIENTO'), 0, 1);
@@ -115,5 +115,5 @@ $pdf->SetTextColor(33);
 $pdf->SetFillColor(252, 252, 252);
 $pdf->MultiCell(0, 8, utf8_decode($d['diagnostico']), 1, 'L', true);
 
-// Salida
+
 $pdf->Output('I', 'Informe_Medico_' . $d['mascota'] . '.pdf');

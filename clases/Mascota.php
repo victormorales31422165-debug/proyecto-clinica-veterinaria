@@ -14,7 +14,7 @@ class Mascota {
         $this->conexion = $db;
     }
 
-    // Leer todas las mascotas con datos del cliente
+   
     public function leerTodas() {
         $query = "SELECT m.*, c.nombre as dueño_nombre, c.apellido as dueño_apellido 
                   FROM " . $this->tabla . " m
@@ -26,7 +26,7 @@ class Mascota {
         return $stmt;
     }
 
-    // Obtener una mascota por su ID
+    
     public function obtenerPorId($id) {
         $query = "SELECT * FROM " . $this->tabla . " WHERE id_mascota = :id";
         $stmt = $this->conexion->prepare($query);
@@ -35,7 +35,7 @@ class Mascota {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    // Dentro de clases/Mascota.php
+    
 
     public function crear($datos) {
     $query = "INSERT INTO " . $this->tabla . " (nombre, especie, raza, edad, id_cliente) 

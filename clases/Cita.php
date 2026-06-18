@@ -3,7 +3,7 @@ class Cita {
     private $conexion;
     private $tabla = "cita";
 
-    // Atributos exactos según tu base de datos
+    
     public $id_cita;
     public $motivo;
     public $estado;
@@ -16,7 +16,7 @@ class Cita {
         $this->conexion = $db;
     }
 
-    // 1. LEER TODAS LAS CITAS (Corregido para mostrar nombre del veterinario)
+    
     public function leerTodas() {
         $query = "SELECT c.*, m.nombre AS nombre_mascota, u.nombre AS v_nom 
                   FROM " . $this->tabla . " c
@@ -29,7 +29,7 @@ class Cita {
         return $stmt;
     }
 
-    // 2. OBTENER UNA CITA POR ID
+    
     public function obtenerPorId($id) {
         $query = "SELECT * FROM " . $this->tabla . " WHERE id_cita = :id";
         $stmt = $this->conexion->prepare($query);
@@ -38,7 +38,7 @@ class Cita {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    // 3. CREAR CITA COMPLETA (Usado en el formulario de citas.php)
+   
     public function crearCitaCompleta($datos) {
         $query = "INSERT INTO " . $this->tabla . " (fecha_hora, motivo, id_mascota, id_veterinario, estado) 
                   VALUES (:fh, :mot, :id_m, :id_v, 'pendiente')";
@@ -49,14 +49,14 @@ class Cita {
         $stmt->bindParam(":mot", $datos['motivo']);
         $stmt->bindParam(":id_m", $datos['id_mascota']);
         
-        // Manejo de veterinario opcional (NULL si no se asigna)
+        
         $id_v = !empty($datos['id_veterinario']) ? $datos['id_veterinario'] : null;
         $stmt->bindParam(":id_v", $id_v, is_null($id_v) ? PDO::PARAM_NULL : PDO::PARAM_INT);
         
         return $stmt->execute();
     }
 
-    // 4. ACTUALIZAR CITA COMPLETA
+    
     public function actualizarCitaCompleta($datos) {
         $query = "UPDATE " . $this->tabla . " 
                   SET fecha_hora=:fh, motivo=:mot, id_veterinario=:id_v, estado=:est 
@@ -75,7 +75,7 @@ class Cita {
         return $stmt->execute();
     }
 
-    // 5. AGREGAR DIAGNÓSTICO (Cuando el veterinario termina la cita)
+   
     public function agregarDiagnostico($id, $texto_diagnostico) {
         $query = "UPDATE " . $this->tabla . " 
                   SET diagnostico = :diagnostico, estado = 'completada' 
@@ -88,7 +88,7 @@ class Cita {
         return $stmt->execute();
     }
 
-    // 6. ACTUALIZAR SOLO EL ESTADO
+    
     public function actualizarEstado($id, $nuevo_estado) {
         $query = "UPDATE " . $this->tabla . " SET estado = :estado WHERE id_cita = :id_cita";
         $stmt = $this->conexion->prepare($query);
@@ -97,7 +97,7 @@ class Cita {
         return $stmt->execute();
     }
 
-    // 7. ELIMINAR CITA
+    
     public function eliminar($id) {
         $query = "DELETE FROM " . $this->tabla . " WHERE id_cita = :id_cita";
         $stmt = $this->conexion->prepare($query);
@@ -105,7 +105,7 @@ class Cita {
         return $stmt->execute();
     }
 
-    // 8. LEER RESUMEN PARA DASHBOARD (Admin)
+    
     public function leerResumenDashboard() {
         $query = "SELECT c.*, m.nombre as mascota_nombre, u.nombre as vet_nombre 
                   FROM " . $this->tabla . " c 
@@ -118,7 +118,7 @@ class Cita {
         return $stmt;
     }
 
-    // 9. LEER CITAS POR VETERINARIO (Para mis_citas.php)
+    
     public function leerPorVeterinario($id_vet) {
         $query = "SELECT c.*, m.nombre as mascota, cl.nombre as dueño, cl.apellido 
                   FROM " . $this->tabla . " c 
@@ -133,7 +133,7 @@ class Cita {
         return $stmt;
     }
 
-    // 10. OBTENER DETALLES COMPLETOS (Para atender_cita.php)
+    
     public function obtenerDetallesCompletos($id_cita) {
         $query = "SELECT c.*, m.nombre as mascota, m.especie, m.raza, m.edad, cl.nombre as dueño, cl.apellido, cl.telefono 
                   FROM " . $this->tabla . " c
@@ -147,7 +147,7 @@ class Cita {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    // 11. OBTENER DATOS PARA REPORTE PDF
+    
     public function obtenerDatosReporte($id_cita) {
         $query = "SELECT c.*, m.nombre as mascota, m.especie, m.raza, m.edad, 
                          cl.nombre as dueño, cl.apellido, 

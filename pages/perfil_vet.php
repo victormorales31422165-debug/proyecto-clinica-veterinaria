@@ -1,12 +1,12 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// 1. IMPORTAR CLASES Y LIBRERÍAS
+
 require_once '../clases/DB.php';
 require_once '../clases/Usuario.php';
 require_once '../includes/TokenAntiCSRF.php';
 
-// 2. SEGURIDAD Y OBJETOS
+
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'veterinario') {
     header("Location: ../login.php"); exit();
 }
@@ -18,39 +18,36 @@ $usuarioObj = new Usuario($db);
 $id_vet = $_SESSION['user']['id_veterinario'];
 $mensaje = '';
 
-// 3. PROCESAR ACTUALIZACIÓN (POST)
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
         die("Error de seguridad: Token CSRF no válido o sesión expirada.");
     }
 
-    // Recopilamos los datos del POST
+    
     $datos_actualizar = [
         'nombre' => trim($_POST['nombre']),
         'correo' => trim($_POST['correo']),
         'especialidad' => trim($_POST['especialidad']),
-        'password' => trim($_POST['password']), // Puede estar vacío
+        'password' => trim($_POST['password']), 
     ];
 
-    // Llamamos al método de la clase para actualizar
+    
     if ($usuarioObj->actualizarPerfil($id_vet, $datos_actualizar)) {
         $mensaje = "✅ Datos actualizados correctamente.";
         
-        // Actualizamos la sesión si se cambió el nombre
+       
         $_SESSION['user']['nombre'] = $datos_actualizar['nombre'];
     } else {
         $mensaje = "Ocurrió un error al actualizar los datos.";
     }
 }
 
-// 4. OBTENER DATOS ACTUALES DEL VETERINARIO
-// Usamos el método de la clase para obtener los datos
+
+
 $datos_vet = $usuarioObj->obtenerPerfil($id_vet); 
-// Esto es crucial para que el value de los inputs no se pierda.
-// Si tu sesión ya tiene todos los datos necesarios, puedes seguir usando $_SESSION['user']
-// para la mayoría de los campos y solo obtener los que cambian o no están en sesión.
-// Para este caso, vamos a usar el resultado de la consulta para asegurar que sea el más actual:
-$datos_actuales = $datos_vet ?? $_SESSION['user']; // Usamos lo obtenido o lo de sesión si falla la consulta
+
+$datos_actuales = $datos_vet ?? $_SESSION['user']; 
 
 require_once '../includes/header.php';
 ?>

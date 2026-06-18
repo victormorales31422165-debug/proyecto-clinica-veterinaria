@@ -1,16 +1,16 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// 1. IMPORTAMOS LAS CLASES
+
 require_once '../clases/DB.php';
 require_once '../clases/Usuario.php';
 require_once '../includes/TokenAntiCSRF.php';
 
 $error = '';
 
-// 2. PROCESAR LOGIN
+
 if ($_POST) {
-    // Validar Token CSRF por seguridad
+    
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
         die("Error de seguridad: Token CSRF no válido.");
     }
@@ -22,14 +22,14 @@ if ($_POST) {
     $user_input = trim($_POST['username']);
     $pass_input = trim($_POST['password']);
 
-    // Llamamos al método login de nuestra clase
+    
     $user_data = $usuarioObj->login($user_input, $pass_input);
 
     if ($user_data) {
         $_SESSION['user'] = $user_data;
         $_SESSION['rol'] = $user_data['rol'];
 
-        // Redirección según rol (ajusté las rutas porque ya estás en /pages/)
+   
         if ($user_data['rol'] === 'admin') {
             header("Location: dashboard.php");
         } else {
@@ -49,11 +49,11 @@ if ($_POST) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>El Colibrí - Iniciar Sesión</title>
 
-    <!-- Boostrap y FontAwesome -->
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
-    <!-- IMPORTANTE: Ajuste de ruta para que el diseño no cambie -->
+    
     <link rel="stylesheet" href="../assets/css/style.css"> 
 </head>
 <body class="d-flex align-items-center min-vh-100 body-login">
@@ -77,7 +77,7 @@ if ($_POST) {
                     <?php endif; ?>
 
                     <form method="POST">
-                        <!-- Token CSRF oculto -->
+                      
                         <input type="hidden" name="token_csrf" value="<?= TokenAntiCSRF::generarToken() ?>">
 
                         <div class="mb-3">

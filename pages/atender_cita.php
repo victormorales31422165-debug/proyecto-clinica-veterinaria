@@ -1,17 +1,17 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// 1. Cargamos las clases necesarias
+
 require_once '../clases/DB.php';
 require_once '../clases/Cita.php';
 require_once '../includes/TokenAntiCSRF.php';
 
-// 2. Inicializamos conexión y objeto
+
 $database = new DB();
 $db = $database->conectar();
 $citaObj = new Cita($db);
 
-// Verificación de rol
+
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'veterinario') {
     header("Location: ../login.php"); 
     exit();
@@ -21,7 +21,7 @@ $id_cita = (int)$_GET['id'];
 $mensaje = '';
 $guardado = false;
 
-// 3. Lógica para finalizar la cita (POO)
+
 if (isset($_POST['finalizar'])) {
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
         die("Error de seguridad: Token CSRF no válido o expirado.");
@@ -29,17 +29,17 @@ if (isset($_POST['finalizar'])) {
 
     $diag = $_POST['diagnostico'];
     
-    // Usamos el método de la clase para actualizar
+    
     if($citaObj->agregarDiagnostico($id_cita, $diag)) {
         $mensaje = "✅ Diagnóstico guardado exitosamente.";
         $guardado = true;
     }
 }
 
-// 4. Obtenemos los datos para mostrar en la vista
+
 $cita = $citaObj->obtenerDetallesCompletos($id_cita);
 
-// Si no se encuentra la cita, podríamos redirigir o mostrar error
+
 if (!$cita) {
     die("Cita no encontrada.");
 }
@@ -56,7 +56,7 @@ require_once '../includes/header.php';
     <?php if($mensaje) echo "<div class='alert alert-success shadow'>$mensaje</div>"; ?>
 
     <div class="row">
-        <!-- Columna de Datos del Paciente -->
+       
         <div class="col-md-4">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-primary text-white fw-bold">Datos del Paciente</div>
@@ -77,12 +77,12 @@ require_once '../includes/header.php';
             </div>
         </div>
 
-        <!-- Columna del Formulario de Diagnóstico -->
+        
         <div class="col-md-8">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-4">
                     <form method="POST">
-                        <!-- CSRF Token -->
+                     
                         <input type="hidden" name="token_csrf" value="<?= TokenAntiCSRF::generarToken() ?>">
 
                         <label class="form-label fw-bold h5">Informe de Diagnóstico y Tratamiento:</label>

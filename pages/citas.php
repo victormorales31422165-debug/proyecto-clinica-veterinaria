@@ -1,7 +1,7 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// 1. IMPORTAR CLASES Y DEPENDENCIAS
+
 require_once '../vendor/autoload.php';
 require_once '../clases/DB.php';
 require_once '../clases/Cita.php';
@@ -11,12 +11,12 @@ require_once '../includes/TokenAntiCSRF.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 
-// Seguridad de Rol
+
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
     header("Location: ../login.php"); exit();
 }
 
-// 2. INICIALIZAR OBJETOS
+
 $database = new DB();
 $db = $database->conectar();
 $citaObj = new Cita($db);
@@ -25,9 +25,9 @@ $usuarioObj = new Usuario($db);
 
 require_once '../includes/header.php';
 
-/**
- * Función de envío de correos profesional (HTML)
- */
+
+
+ 
 function enviarAviso($usuarioObj, $mascotaObj, $id_v, $fh, $id_m) {
     $v = $usuarioObj->obtenerPerfil($id_v);
     $m = $mascotaObj->obtenerPorId($id_m);
@@ -35,7 +35,7 @@ function enviarAviso($usuarioObj, $mascotaObj, $id_v, $fh, $id_m) {
     if ($v && !empty($v['correo'])) {
         $mail = new PHPMailer(true);
         try {
-            // Configuración SMTP
+            
             $mail->CharSet = 'UTF-8';
             $mail->isSMTP();
             $mail->Host = 'smtp.gmail.com';
@@ -45,11 +45,11 @@ function enviarAviso($usuarioObj, $mascotaObj, $id_v, $fh, $id_m) {
             $mail->SMTPSecure = 'tls';
             $mail->Port = 587;
 
-            // Destinatarios
+           
             $mail->setFrom('clinicaveterinariaelcolibri1@gmail.com', 'Clínica Veterinaria El Colibrí');
             $mail->addAddress($v['correo'], $v['nombre']);
 
-            // Contenido HTML
+            
             $mail->isHTML(true);                                  
             $mail->Subject = 'NOTIFICACIÓN MÉDICA: Cita programada para:' . htmlspecialchars($m['nombre']);
 
@@ -91,13 +91,13 @@ function enviarAviso($usuarioObj, $mascotaObj, $id_v, $fh, $id_m) {
     }
 }
 
-// 3. PROCESAR ACCIONES (POST)
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) { die("CSRF Error"); }
 
     if (isset($_POST['crear_cita'])) {
         if($citaObj->crearCitaCompleta($_POST)) {
-            // IMPORTANTE: Enviar aviso solo si se seleccionó un veterinario
+            
             if(!empty($_POST['id_veterinario'])) {
                 enviarAviso($usuarioObj, $mascotaObj, $_POST['id_veterinario'], $_POST['fecha_hora'], $_POST['id_mascota']);
             }
@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header("Location: citas.php"); exit();
 }
 
-// 4. PROCESAR ACCIONES (GET)
+
 if (isset($_GET['eliminar'])) {
     $citaObj->eliminar((int)$_GET['eliminar']);
     header("Location: citas.php"); exit();
@@ -122,7 +122,7 @@ if (isset($_GET['editar'])) {
     $editRow = $citaObj->obtenerPorId((int)$_GET['editar']);
 }
 
-// 5. OBTENER LISTADOS PARA LA VISTA
+
 $mascotas = $mascotaObj->leerTodas();
 $veterinarios = $usuarioObj->listarVeterinarios();
 $citas = $citaObj->leerTodas();
@@ -131,7 +131,7 @@ $citas = $citaObj->leerTodas();
 <div class="container-fluid mt-3">
     <h2 class="mb-4">Gestión de Citas</h2>
 
-    <!-- Formulario -->
+    
     <div class="card mb-4 shadow-sm border-0">
         <div class="card-header bg-primary text-white fw-bold">
             <?= $editRow ? 'Editar Cita' : 'Programar Nueva Cita' ?>
@@ -164,7 +164,7 @@ $citas = $citaObj->leerTodas();
                         <select name="id_veterinario" class="form-select">
                             <option value="">Sin asignar</option>
                             <?php 
-                            // Reiniciamos el puntero si es necesario o usamos el listado fresco
+                           
                             $vets = $usuarioObj->listarVeterinarios(); 
                             while($v = $vets->fetch(PDO::FETCH_ASSOC)): ?>
                                 <option value="<?= $v['id_veterinario'] ?>" <?= (($editRow['id_veterinario'] ?? '') == $v['id_veterinario'] ? 'selected' : '') ?>>
@@ -192,7 +192,7 @@ $citas = $citaObj->leerTodas();
         </div>
     </div>
 
-    <!-- Tabla -->
+    
     <div class="card shadow-sm border-0">
         <div class="card-body p-0">
             <table class="table table-hover align-middle mb-0">
@@ -213,7 +213,7 @@ $citas = $citaObj->leerTodas();
                             <small class="text-muted">(<?= date('H:i', strtotime($c['fecha_hora'])) ?>)</small>
                         </td>
                         <td class="fw-bold"><?= htmlspecialchars($c['nombre_mascota'] ?? 'N/A') ?></td>
-                        <!-- Aquí se muestra el veterinario usando el alias v_nom -->
+                        
                         <td><?= htmlspecialchars($c['v_nom'] ?? 'Sin asignar') ?></td>
                         <td>
                             <span class="badge <?= ($c['estado'] == 'completada' ? 'bg-success' : 'bg-warning text-dark') ?>">

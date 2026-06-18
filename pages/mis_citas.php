@@ -1,12 +1,12 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// 1. IMPORTAR CLASES
+
 require_once '../clases/DB.php';
 require_once '../clases/Cita.php';
 require_once '../includes/TokenAntiCSRF.php';
 
-// 2. SEGURIDAD Y OBJETOS
+
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'veterinario') {
     header("Location: ../login.php"); exit();
 }
@@ -18,7 +18,7 @@ $citaObj = new Cita($db);
 $id_vet = $_SESSION['user']['id_veterinario'];
 $mensaje = '';
 
-// 3. PROCESAR DIAGNÓSTICO (POST)
+
 if (isset($_POST['guardar_diag'])) {
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
         die("Error de seguridad: Token CSRF no válido.");
@@ -27,15 +27,15 @@ if (isset($_POST['guardar_diag'])) {
     $id_cita = (int)$_POST['id_cita'];
     $diagnostico = $_POST['diagnostico'];
 
-    // Usamos el método que ya definimos en Cita.php anteriormente
+    
     if($citaObj->agregarDiagnostico($id_cita, $diagnostico)) {
         $mensaje = "✅ Diagnóstico guardado y cita finalizada correctamente.";
     }
 }
 
-// 4. OBTENER CITAS ASIGNADAS
+
 $resultado = $citaObj->leerPorVeterinario($id_vet);
-// Convertimos a array para poder contar los registros como hacías antes
+
 $data_citas = $resultado->fetchAll(PDO::FETCH_ASSOC);
 
 require_once '../includes/header.php';
@@ -76,7 +76,7 @@ require_once '../includes/header.php';
                                 </span>
                             </td>
                             <td class="text-center">
-                                <!-- Enlace a la página detallada (Se mantiene igual) -->
+                                
                                 <a href="atender_cita.php?id=<?= $c['id_cita'] ?>" class="btn btn-primary btn-sm px-3 shadow-sm">
                                     <i class="fas fa-stethoscope"></i> Atender
                                 </a>

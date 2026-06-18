@@ -1,17 +1,17 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// 1. IMPORTAMOS LAS CLASES
+
 require_once '../clases/DB.php';
 require_once '../clases/Cita.php';
 require_once '../includes/TokenAntiCSRF.php';
 
-// 2. CONEXIÓN Y OBJETOS
+
 $database = new DB();
 $db = $database->conectar();
 $citaObj = new Cita($db);
 
-// Verificación de rol admin
+
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
     $dest = (isset($_SESSION['rol']) && $_SESSION['rol'] === 'veterinario') ? 'mis_citas.php' : '../login.php';
     header("Location: $dest");
@@ -20,7 +20,7 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
 
 require_once '../includes/header.php';
 
-// 3. LÓGICA PARA ELIMINAR (POO + CSRF)
+
 if (isset($_GET['eliminar'])) {
     if (isset($_GET['token']) && TokenAntiCSRF::consumirToken($_GET['token'])) {
         $id_del = (int)$_GET['eliminar'];
@@ -30,7 +30,7 @@ if (isset($_GET['eliminar'])) {
     }
 }
 
-// 4. OBTENER DATOS (POO)
+
 $resumen_citas = $citaObj->leerResumenDashboard();
 $citas_data = $resumen_citas->fetchAll(PDO::FETCH_ASSOC);
 
@@ -40,7 +40,7 @@ $tokenEliminar = TokenAntiCSRF::generarToken();
 <div class="container-fluid mt-4">
     <h2 class="mb-4">Panel Administrativo</h2>
     
-    <!-- Cards de Navegación -->
+    
     <div class="row g-4 text-center mb-5">
         <div class="col-md-3">
             <a href="clientes.php" class="text-decoration-none">
@@ -76,7 +76,7 @@ $tokenEliminar = TokenAntiCSRF::generarToken();
         </div>
     </div>
 
-    <!-- Tabla de Actividades -->
+    
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white py-3">
             <h5 class="mb-0 fw-bold text-muted"><i class="fas fa-clock"></i> Próximas Actividades</h5>
@@ -99,7 +99,7 @@ $tokenEliminar = TokenAntiCSRF::generarToken();
                             <td><?= htmlspecialchars($rc['vet_nombre'] ?? 'Sin asignar') ?></td>
                             <td><span class="badge rounded-pill <?= ($rc['estado'] == 'completada' ? 'bg-success' : 'bg-warning text-dark') ?>"><?= htmlspecialchars($rc['estado']) ?></span></td>
                             <td class="text-center">
-                                <!-- BOTÓN ACTUALIZADO: Usa el modal dinámico del footer -->
+                                
                                 <button class="btn btn-sm btn-outline-info" 
                                         data-bs-toggle="modal" 
                                         data-bs-target="#modalMotivo" 
@@ -127,7 +127,7 @@ $tokenEliminar = TokenAntiCSRF::generarToken();
 </div>
 
 <?php 
-// Eliminamos el bucle de modales que estaba aquí, 
-// ya que ahora usamos el modal único en el footer.php
+
+
 require_once '../includes/footer.php'; 
 ?>

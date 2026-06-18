@@ -1,13 +1,13 @@
 <?php 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// 1. IMPORTAR CLASES
+
 require_once '../clases/DB.php';
 require_once '../clases/Mascota.php';
 require_once '../clases/Cliente.php';
 require_once '../includes/TokenAntiCSRF.php';
 
-// 2. INICIALIZAR OBJETOS
+
 $database = new DB();
 $db = $database->conectar();
 $mascotaObj = new Mascota($db);
@@ -24,7 +24,7 @@ require '../includes/header.php';
 $mensaje = '';
 $error = '';
 
-// 3. PROCESAR ACCIONES (POST)
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
         die("Error de seguridad: Token CSRF no válido.");
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// 4. PROCESAR ACCIONES (GET)
+
 if (isset($_GET['eliminar'])) {
     if($mascotaObj->eliminar((int)$_GET['eliminar'])) {
         $mensaje = "Mascota eliminada";
@@ -59,7 +59,7 @@ if (isset($_GET['editar'])) {
     $editRow = $mascotaObj->obtenerPorId((int)$_GET['editar']);
 }
 
-// 5. OBTENER DATOS PARA LA VISTA
+
 $listaClientes = $clienteObj->leerTodos();
 $listaMascotas = $mascotaObj->leerTodas();
 ?>
@@ -171,7 +171,7 @@ $listaMascotas = $mascotaObj->leerTodas();
     </tbody>
 </table>
 
-<!-- Scripts y Estilos de Select2 (Intactos) -->
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>

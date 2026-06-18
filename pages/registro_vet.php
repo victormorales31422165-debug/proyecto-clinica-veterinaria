@@ -1,16 +1,16 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// 1. IMPORTAMOS LAS CLASES
+
 require_once '../clases/DB.php';
 require_once '../clases/Usuario.php';
 require_once '../includes/TokenAntiCSRF.php';
 
 $error = "";
 
-// 2. PROCESAR EL POST
+
 if ($_POST) {
-    // Validar Token CSRF
+    
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
         die("Error de seguridad: Token CSRF no válido.");
     }
@@ -27,11 +27,11 @@ if ($_POST) {
         'password' => $_POST['password']
     ];
 
-    // Verificar si el usuario existe
+    
     if ($usuarioObj->existeUsuario($datos['usuario'])) {
         $error = "El nombre de usuario ya está en uso.";
     } else {
-        // Intentar registrar
+        
         if ($usuarioObj->registrarVeterinario($datos)) {
             header("Location: login.php?registro=exitoso");
             exit;
@@ -49,10 +49,10 @@ if ($_POST) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro Veterinario - El Colibrí</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Ajuste de ruta para el CSS -->
+    
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
-<!-- Se mantiene el fondo y el diseño intacto -->
+
 <body class="d-flex align-items-center min-vh-100" style="background: url('../assets/img/background.png'); background-size: cover;">
     <div class="container">
         <div class="row justify-content-center">
@@ -66,7 +66,7 @@ if ($_POST) {
                     <?php if($error) echo "<div class='alert alert-danger'>$error</div>"; ?>
 
                     <form method="POST">
-                        <!-- Token CSRF -->
+                        
                         <input type="hidden" name="token_csrf" value="<?= TokenAntiCSRF::generarToken() ?>">
 
                         <div class="mb-3">

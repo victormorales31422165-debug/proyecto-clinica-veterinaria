@@ -1,12 +1,12 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// 1. IMPORTAR CLASES
+
 require_once '../clases/DB.php';
 require_once '../clases/Usuario.php';
 require_once '../includes/TokenAntiCSRF.php';
 
-// 2. SEGURIDAD Y OBJETOS
+
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
     $dest = (isset($_SESSION['rol']) && $_SESSION['rol'] === 'veterinario') ? 'mis_citas.php' : '../login.php';
     header("Location: $dest");
@@ -20,13 +20,13 @@ $usuarioObj = new Usuario($db);
 $mensaje = '';
 $error = '';
 
-// 3. PROCESAR ACCIONES (POST)
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
         die("Error de seguridad: Token CSRF no válido.");
     }
 
-    // Crear Veterinario
+    
     if (isset($_POST['crear'])) {
         if ($usuarioObj->existeUsuario($_POST['usuario'])) {
             $error = "El usuario '" . htmlspecialchars($_POST['usuario']) . "' ya existe.";
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Actualizar Veterinario
+    
     if (isset($_POST['actualizar'])) {
         $id = (int)$_POST['id_veterinario'];
         if ($usuarioObj->actualizarVeterinarioDesdeAdmin($id, $_POST)) {
@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// 4. PROCESAR ACCIONES (GET)
+
 if (isset($_GET['eliminar'])) {
     if ($usuarioObj->eliminarVeterinario((int)$_GET['eliminar'])) {
         $mensaje = "Registro eliminado del sistema.";
@@ -58,7 +58,7 @@ if (isset($_GET['editar'])) {
     $editRow = $usuarioObj->obtenerPerfil((int)$_GET['editar']);
 }
 
-// 5. OBTENER LISTADO
+
 $resultadoVet = $usuarioObj->listarVeterinarios();
 $listado = $resultadoVet->fetchAll(PDO::FETCH_ASSOC);
 
@@ -71,7 +71,7 @@ require_once '../includes/header.php';
     <?php if($mensaje) echo "<div class='alert alert-success alert-dismissible fade show shadow-sm'>$mensaje<button type='button' class='btn-close' data-bs-dismiss='alert'></button></div>"; ?>
     <?php if($error) echo "<div class='alert alert-danger shadow-sm'>$error</div>"; ?>
 
-    <!-- Formulario (Diseño intacto) -->
+    
     <div class="card mb-5 shadow-sm border-0">
         <div class="card-header <?= $editRow ? 'bg-warning text-dark' : 'bg-success text-white' ?> fw-bold">
             <i class="fas <?= $editRow ? 'fa-edit' : 'fa-plus-circle' ?>"></i> 
@@ -125,7 +125,7 @@ require_once '../includes/header.php';
         </div>
     </div>
 
-    <!-- Tabla (Diseño intacto) -->
+    
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white py-3">
             <h5 class="mb-0 text-muted"><i class="fas fa-list"></i> Personal Médico Registrado</h5>

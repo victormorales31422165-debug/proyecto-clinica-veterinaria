@@ -1,12 +1,12 @@
 <?php 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// 1. IMPORTAR CLASES
+
 require_once '../clases/DB.php';
 require_once '../clases/Cliente.php';
 require_once '../includes/TokenAntiCSRF.php';
 
-// 2. INICIALIZAR
+
 $database = new DB();
 $db = $database->conectar();
 $clienteObj = new Cliente($db);
@@ -22,7 +22,7 @@ require '../includes/header.php';
 $mensaje = '';
 $error = '';
 
-// 3. PROCESAR ACCIONES (POST)
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!TokenAntiCSRF::consumirToken($_POST['token_csrf'] ?? '')) {
         die("Error de seguridad: Token CSRF no válido.");
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// 4. PROCESAR ACCIONES (GET)
+
 if (isset($_GET['eliminar'])) {
     if($clienteObj->eliminar((int)$_GET['eliminar'])) {
         $mensaje = "Cliente eliminado";
